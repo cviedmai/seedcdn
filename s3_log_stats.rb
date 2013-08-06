@@ -4,7 +4,7 @@ require 'geoip'
 
 root = ARGV[0]
 
-$all = Hash.new {|h,k| h[k] = {minutes: {}, hours: {}, total: [], files: Set.new, size: 0}}
+$all = Hash.new {|h,k| h[k] = {minutes: {}, hours: {}, total: 0, files: Set.new, size: 0}}
 $geo = GeoIP.new(root + 'GeoIP.dat')
 
 def process(file)
@@ -20,11 +20,11 @@ def process(file)
     key = $geo.country(ip).country_code2
 
     group = $all[key]
-    group[:minutes][minute] = [] unless group[:minutes].include?(minute)
-    group[:minutes][minute] << size
-    group[:hours][hour] = [] unless group[:hours].include?(hour)
-    group[:hours][hour] << size
-    group[:total] << size
+    group[:minutes][minute] = 0 unless group[:minutes].include?(minute)
+    group[:minutes][minute] += size
+    group[:hours][hour] = 0 unless group[:hours].include?(hour)
+    group[:hours][hour] += size
+    group[:total] += size
 
     url = parts[8]
     unless group[:files].include?(url)
@@ -41,32 +41,26 @@ Dir[root + 'logs/*'].each do |f|
   process(f)
 end
 
-data = Hash.new {|h,k| h[k] = {minutes: [], hours: []}}
-$all.each do |key, d|
-  group = data[key]
-  earliest = Time.now.to_i
-  latest = 0
-  d[:minutes].each do |time, sizes|
-    if time < earliest
-      earliest = time
-    elsif time > latest
-      latest = time
-    end
-    group[:minutes] << sizes.inject { |sum, x| sum += x }
-  end
-  group[:minutes].sort!
+$all.each do |key, group|
+  sorted_by_time = group[:minutes].sort{|a, b| a[0] <=> b[0]}
 
-  d[:hours].each do |time, sizes|
-    group[:hours] << sizes.inject { |sum, x| sum += x }
-  end
-  group[:hours].sort!
+  top = group[:minutes].sort{|a, b| b[1] <=> a[1]}.first
+  group[:minutes] = top[1] / (60 * 131072.0)
 
-  group[:total] = d[:total].inject { |sum, x| sum += x } / ((latest - earliest) * 131072.0)
-  group[:size] = d[:size] / 1073741824.0 #GB
+  top = group[:hours].sort{|a, b| b[1] <=> a[1]}.first
+  group[:hours] = top[1] / (3600 * 131072.0)
+
+  earliest = sorted_by_time.first[0]
+  latest = sorted_by_time.last[0]
+  if earliest == latest
+    group[:total] = 0
+  else
+    group[:total] = group[:total] / ((latest - earliest) * 131072.0)
+  end
+  group[:size] = group[:size] / 1073741824.0 #GB
 end
 
-
-data.sort{|a, b| b[1][:total] <=> a[1][:total]}.each do |key, d|
+$all.sort{|a, b| b[1][:total] <=> a[1][:total]}.each do |key, d|
   key = key + ' ' * (16 - key.length) if key.length < 16
-  puts "#{key} \t %10.2f \t %10.2f \t %10.2f \t %10.2f" % [d[:minutes][-1] / (60 * 131072.0), d[:hours][-1] / (3600 * 131072.0), d[:total], d[:size]]
+  puts "#{key} \t %10.2f \t %10.2f \t %10.2f \t %10.2f" % [d[:minutes], d[:hours], d[:total], d[:size]]
 end
