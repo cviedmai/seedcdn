@@ -1,8 +1,10 @@
 require 'time'
 require 'geoip'
 
+root = ARGV[0]
+
 $all = Hash.new {|h,k| h[k] = {minutes: {}, hours: {}, total: []}}
-$geo = GeoIP.new('GeoIP.dat')
+$geo = GeoIP.new(root + 'GeoIP.dat')
 
 def process(file)
   File.readlines(file).each do |line|
@@ -28,15 +30,23 @@ def process(file)
   end
 end
 
-Dir['logs/*'].each do |f|
+Dir[root + 'logs/*'].each do |f|
   process(f)
 end
 
 data = Hash.new {|h,k| h[k] = {minutes: [], hours: []}}
 $all.each do |key, d|
+  earliest = Time.now.to_i
+  latest = 0
   d[:minutes].each do |time, sizes|
+    if time < earliest
+      earliest = time
+    elsif time > latest
+      latest = time
+    end
     data[key][:minutes] << sizes.inject { |sum, x| sum += x }
   end
+
   data[key][:minutes].sort!
 
   d[:hours].each do |time, sizes|
@@ -44,11 +54,11 @@ $all.each do |key, d|
   end
   data[key][:hours].sort!
 
-  data[key][:total] = d[:total].inject { |sum, x| sum += x }
+  data[key][:total] = d[:total].inject { |sum, x| sum += x } / ((latest - earliest) * 131072.0)
 end
 
 
 data.sort{|a, b| b[1][:total] <=> a[1][:total]}.each do |key, d|
   key = key + ' ' * (16 - key.length) if key.length < 16
-  puts "#{key} \t %10d \t %10d \t %10d" % [d[:minutes][-1], d[:hours][-1], d[:total]]
+  puts "#{key} \t %10.2f \t %10.2f \t %10.2f" % [d[:minutes][-1] / (60 * 131072.0), d[:hours][-1] / (3600 * 131072.0), d[:total]]
 end
