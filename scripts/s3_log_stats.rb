@@ -4,7 +4,7 @@ require 'geoip'
 
 root = ARGV[0]
 
-$all = Hash.new {|h,k| h[k] = {minutes: {}, hours: {}, total: 0, files: Set.new, size: 0}}
+$all = Hash.new {|h,k| h[k] = {minutes: {}, hours: {}, total: 0, files: Set.new, size: 0, hits: 0}}
 $geo = GeoIP.new(root + 'GeoIP.dat')
 
 def process(file)
@@ -25,6 +25,7 @@ def process(file)
     group[:hours][hour] = 0 unless group[:hours].include?(hour)
     group[:hours][hour] += size
     group[:total] += size
+    group[:hits] += 1
 
     url = parts[8]
     unless group[:files].include?(url)
@@ -62,5 +63,5 @@ end
 
 $all.sort{|a, b| b[1][:total] <=> a[1][:total]}.each do |key, d|
   key = key + ' ' * (16 - key.length) if key.length < 16
-  puts "#{key} \t %10.2f \t %10.2f \t %10.2f \t %10.2f" % [d[:minutes], d[:hours], d[:total], d[:size]]
+  puts "#{key} \t %10.2f \t %10.2f \t %10.2f \t %10.2f \t %10d \t %10d" % [d[:minutes], d[:hours], d[:total], d[:size], d[:hits], d[:files].length]
 end
