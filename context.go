@@ -3,9 +3,10 @@ package seedcdn
 import (
   "math"
   "net/http"
+  "seedcdn/header"
 )
 
-const CHUNKSIZE = 2*1024*1024
+const CHUNKSIZE = float64(2*1024*1024)
 
 type Context struct {
   req *http.Request
@@ -20,7 +21,7 @@ func NewContext(req *http.Request) *Context {
   if len(r) == 0 {
     c.chunk = 0
   } else {
-    c.chunk = math.Floor(r[0].from / CHUNKSIZE)
+    c.chunk = int(math.Floor(float64(r[0].From) / CHUNKSIZE))
   }
   return c
 }

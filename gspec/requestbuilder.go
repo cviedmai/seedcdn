@@ -14,10 +14,11 @@ func Request() *RequestBuilder {
   }
 }
 
-func (rb *RequestBuilder) Request() *http.Request {
+func (rb *RequestBuilder) Req() *http.Request {
   return rb.req
 }
 
 func (rb *RequestBuilder) WithHeader(key, value string) *RequestBuilder {
-
+  rb.req.Header.Set(key, value)
+  return rb
 }

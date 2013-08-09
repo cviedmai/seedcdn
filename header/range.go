@@ -5,8 +5,8 @@ import (
 )
 
 type Range struct {
-  from int
-  to int
+  From int
+  To int
 }
 
 func ParseRange(raw string) []Range {
