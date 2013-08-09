@@ -15,7 +15,7 @@ func ParseRange(raw string) []Range {
   }
   var ranges []Range
   length := len(raw)
-  start := 6
+  start := 6 //bytes=
   split := 0
   for i := start; i < length; i++ {
     c := raw[i]
@@ -31,7 +31,6 @@ func ParseRange(raw string) []Range {
 }
 
 func createRange(raw string, split int) Range {
-  println(raw, split)
   var from, to int
   var relative bool
   if split == 0 {

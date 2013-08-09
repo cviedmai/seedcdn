@@ -10,7 +10,9 @@ type RequestBuilder struct {
 
 func Request() *RequestBuilder {
   return &RequestBuilder{
-    req: new(http.Request),
+    req: &http.Request{
+           Header: make(map[string][]string),
+         },
   }
 }
 
