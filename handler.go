@@ -22,5 +22,5 @@ func init() {
 
 func (h Handler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
   context := core.NewContext(req)
-  head.Yield(context)
+  head.Yield(context, res)
 }
