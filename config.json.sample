@@ -1,3 +1,4 @@
 {
-  "listen": "localhost:8084"
+  "listen": "localhost:8084",
+  "upstream": "s3."
 }

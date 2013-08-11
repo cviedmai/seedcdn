@@ -4,7 +4,6 @@ import (
   "net/http"
   "seedcdn/core"
   "seedcdn/middleware/proxy"
-  "seedcdn/middleware/logging"
   "seedcdn/middleware/caching"
 )
 
@@ -12,9 +11,9 @@ type Handler struct{}
 var head *core.MiddlewareWrapper
 
 func init() {
-  head = &core.MiddlewareWrapper {Middleware: logging.Run}
+  head = &core.MiddlewareWrapper {Middleware: caching.Run}
   prev := head
-  for _, middleware := range []core.MiddlewareLink{caching.Run, proxy.Run} {
+  for _, middleware := range []core.MiddlewareLink{proxy.Run} {
     wrapper := &core.MiddlewareWrapper {Middleware: middleware,}
     prev.Next = wrapper
     prev = wrapper

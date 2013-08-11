@@ -2,7 +2,7 @@ package header
 
 import (
   "testing"
-  "seedcdn/gspec"
+  "github.com/viki-org/gspec"
 )
 
 func TestAnEmptyRange(t *testing.T) {
