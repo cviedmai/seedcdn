@@ -1,4 +1,4 @@
-package seedcdn
+package core
 
 import (
   "testing"
