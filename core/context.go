@@ -2,6 +2,7 @@ package core
 
 import (
   "math"
+  "strconv"
   "net/http"
   "seedcdn/header"
 )
@@ -24,4 +25,8 @@ func NewContext(req *http.Request) *Context {
     c.Chunk = int(math.Floor(float64(r[0].From) / CHUNKSIZE))
   }
   return c
+}
+
+func (c *Context) Key() string {
+  return c.Req.URL.String() + "_" + strconv.Itoa(c.Chunk)
 }
