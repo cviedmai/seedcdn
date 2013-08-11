@@ -9,7 +9,7 @@ import (
 func Run() {
   runtime.GOMAXPROCS(runtime.NumCPU())
   s := &http.Server {
-    Addr: "127.0.0.1:8011",
+    Addr: GetConfig().Listen,
     Handler: new(Handler),
     ReadTimeout: 10 * time.Second,
     MaxHeaderBytes: 8192,
