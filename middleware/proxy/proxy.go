@@ -29,8 +29,8 @@ func Run(context *core.Context, res http.ResponseWriter, next core.Middleware) {
 }
 
 func newRequest(context *core.Context, config *core.Config) *http.Request {
-  from := context.Chunk * int(core.CHUNKSIZE)
-  to := from + int(core.CHUNKSIZE) - 1
+  from := context.Chunk * int(core.CHUNK_SIZE)
+  to := from + int(core.CHUNK_SIZE) - 1
 
   u := context.Req.URL
   return &http.Request{

@@ -13,15 +13,23 @@ var (
 
 type Proxy func (context *core.Context) http.Response
 
-func Demultiplex(context *core.Context) {
+func Demultiplex(context *core.Context, proxy Proxy) {
   master, new := getMaster(context.Key())
   if new == true {
     master.Run(proxy(context))
     return
   }
-  //todo attach to master
+  c := make(chan []byte, IDEAL_CHUNK_COUNT)
+  master.observers <- c
+  sync := <- master.sync
+  println(sync.Status())
+  //res header
+  for {
+    chunklet := <- c
+    if len(chunklet) == 0 { break }
+    //res.write(chunklet)
+  }
 }
-
 
 func getMaster(key string) (*Master, bool) {
   lock.RLock()
@@ -34,10 +42,7 @@ func getMaster(key string) (*Master, bool) {
   master, ok = masters[key]
   if ok == true { return master, false }
 
-  master = &Master{
-    key: key,
-    header: make(http.Header, len(proxyHeaders)),
-  }
+  master = New(key)
   masters[key] = master
   return master, true
 }
