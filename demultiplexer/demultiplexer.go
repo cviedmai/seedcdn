@@ -2,8 +2,8 @@ package demultiplexer
 
 import (
   "sync"
-  "net/http"
   "seedcdn/core"
+  "seedcdn/middleware/proxy"
 )
 
 var (
@@ -11,24 +11,35 @@ var (
   masters = make(map[string] *Master)
 )
 
-type Proxy func (context *core.Context) http.Response
+type Handler func(payload *Payload)
 
-func Demultiplex(context *core.Context, proxy Proxy) {
+func Demultiplex(context *core.Context, slaveHandler Handler, masterHandler Handler) {
   master, new := getMaster(context.Key())
   if new == true {
-    master.Run(proxy(context))
-    return
+    go master.Run(proxy.Run(context))
+    go func() {
+      c := make(chan *Payload, 1)
+      master.Observed(c)
+      for {
+        payload := <- c
+        masterHandler(payload)
+        if payload.Finished { return }
+      }
+    }()
   }
-  c := make(chan []byte, IDEAL_CHUNK_COUNT)
-  master.observers <- c
-  sync := <- master.sync
-  println(sync.Status())
-  //res header
+  c := make(chan *Payload, 1)
+  master.Observed(c)
   for {
-    chunklet := <- c
-    if len(chunklet) == 0 { break }
-    //res.write(chunklet)
+    payload := <- c
+    slaveHandler(payload)
+    if payload.Finished { return }
   }
+}
+
+func Cleanup(key string) {
+  lock.Lock()
+  defer lock.Unlock()
+  delete(masters, key)
 }
 
 func getMaster(key string) (*Master, bool) {

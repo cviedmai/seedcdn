@@ -2,7 +2,7 @@ package demultiplexer
 
 import (
   "io"
-  "time"
+  "sync"
   "net/http"
   "seedcdn/core"
 )
@@ -14,79 +14,62 @@ const (
 
 var proxyHeaders = []string{"Content-Length", "Content-Range", "Content-Type", "Cache-Control"}
 
-type Sync interface {
-  Header() http.Header
-  Data() []byte
-  Status() int
+type Payload struct {
+  Header http.Header
+  Data []byte
+  Status int
+  Finished bool
 }
 
 type Master struct {
-  read int
   key string
-  status int
-  data []byte
-  sync chan Sync
-  header http.Header
-  observers chan chan []byte
+  lock sync.Mutex
+  Observers []chan *Payload
 }
 
 func New(key string) *Master{
-  return &Master{
-    key: key,
-    header: make(http.Header, len(proxyHeaders)),
-    observers: make(chan chan []byte, 16),
-  }
+  return &Master{key: key,}
 }
 
-func (m *Master) Run(response http.Response) {
-  //handle body close, and errors
+func (m *Master) Observed(observer chan *Payload) {
+  m.lock.Lock()
+  defer m.lock.Unlock()
+  m.Observers = append(m.Observers, observer)
+}
 
-  m.status = response.StatusCode
+func (m *Master) Run(response *http.Response, err error) {
+  //todo handle errors
+  defer response.Body.Close()
+
+  status := response.StatusCode
+  header := make(http.Header, len(proxyHeaders))
   for _, h := range proxyHeaders {
-    m.header[h] = response.Header[h]
+    header.Set(h, response.Header.Get(h))
   }
-  //todo pull this from a pool
-  m.data = make([]byte, core.CHUNK_SIZE)
+
+  data := make([]byte, core.CHUNK_SIZE)
+  read := 0
   for {
-    m.Sync()
-    n, err := response.Body.Read(m.data[m.read:m.read+CHUNKLET_SIZE])
-    if n > 0 { m.Notify(m.data[m.read:m.read+n]) }
-    if err == io.EOF { break }
-    if err != nil {
+    n, err := response.Body.Read(data[read:read+CHUNKLET_SIZE])
+    if n > 0 {
+      read += n
+      m.flush(&Payload{Header: header, Status: status, Data: data[0:read], Finished: false,})
+    }
+    if err == io.EOF {
+      break
+    } else if err != nil {
       //todo
     }
-    m.read += n
   }
+
+  Cleanup(m.key)
+  m.flush(&Payload{Header: header, Status: status, Data: data[0:read], Finished: true,})
 }
 
-func (m *Master) Header() http.Header {
-  return m.header
-}
-
-func (m *Master) Status() int {
-  return m.status
-}
-
-func (m *Master) Data() []byte {
-  return m.data[0:m.read]
-}
-
-func (m *Master) Sync() {
-  for {
-    select {
-    case m.sync <- m:
-    default:
-      break
-    }
-  }
-}
-
-func (m *Master) Notify(data []byte) {
-  for observer := range m.observers {
-    select {
-    case observer <- data:
-    case <- time.After(time.Second * 5): // todo configure this, but what's a good value?!
-      continue
-    }
+func (m *Master) flush(payload *Payload) {
+  m.lock.Lock()
+  defer m.lock.Unlock()
+  for _, observer := range m.Observers {
+    go func (o chan *Payload) { o <- payload }(observer)
   }
 }

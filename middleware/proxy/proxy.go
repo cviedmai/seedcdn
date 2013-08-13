@@ -1,8 +1,6 @@
 package proxy
 
 import (
-  "io"
-  "log"
   "net"
   "time"
   "strconv"
@@ -20,12 +18,9 @@ var transport = &http.Transport{
   Dial: dial,
 }
 
-func Run(context *core.Context, res http.ResponseWriter, next core.Middleware) {
+func Run(context *core.Context) (*http.Response, error) {
   request := newRequest(context, core.GetConfig())
-  r, err := transport.RoundTrip(request)
-  if r != nil && r.Body != nil { defer r.Body.Close() }
-  if err != nil { log.Println("upstream error: ", err) }
-  io.Copy(res, r.Body)
+  return transport.RoundTrip(request)
 }
 
 func newRequest(context *core.Context, config *core.Config) *http.Request {
