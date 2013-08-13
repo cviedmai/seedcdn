@@ -9,7 +9,7 @@ import (
 )
 
 const (
-  IDEAL_CHUNK_COUNT = 10
+  IDEAL_CHUNK_COUNT = 100
   CHUNKLET_SIZE = core.CHUNK_SIZE / IDEAL_CHUNK_COUNT + IDEAL_CHUNK_COUNT
 )
 
@@ -39,9 +39,7 @@ func (m *Master) Observed(observer chan *Payload) {
 func (m *Master) Run(response *http.Response, err error, masterHandler Handler) {
   if response != nil && response.Body != nil { defer response.Body.Close() }
   if err != nil {
-    log.Println(err)
-    Cleanup(m.key)
-    m.flush(errorPayload)
+    m.error(err)
     return
   }
 
@@ -63,15 +61,14 @@ func (m *Master) Run(response *http.Response, err error, masterHandler Handler) 
     if err == io.EOF {
       break
     } else if err != nil {
-      //todo
+      m.error(err)
+      return
     }
   }
   final := &Payload{Header: header, Status: status, Data: data[0:read], Finished: true,}
   //Flush the slaves (which releases them) before we do any IO
   m.flush(final)
   masterHandler(final)
-
-  //todo, linger around a bit to fufill any late joiners?
   Cleanup(m.key)
   //Maybe some new slaves joined before we cleaned up
   m.flush(final)
@@ -84,4 +81,10 @@ func (m *Master) flush(payload *Payload) {
     go func (o chan *Payload) { o <- payload }(observer)
   }
   if payload.Finished { m.Observers = make([]chan *Payload, 1) }
+}
+
+func (m *Master) error(err error) {
+  log.Println(err)
+  Cleanup(m.key)
+  m.flush(errorPayload)
 }
