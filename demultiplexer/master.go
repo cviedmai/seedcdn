@@ -2,6 +2,7 @@ package demultiplexer
 
 import (
   "io"
+  "log"
   "sync"
   "net/http"
   "seedcdn/core"
@@ -11,8 +12,6 @@ const (
   IDEAL_CHUNK_COUNT = 10
   CHUNKLET_SIZE = core.CHUNK_SIZE / IDEAL_CHUNK_COUNT + IDEAL_CHUNK_COUNT
 )
-
-var proxyHeaders = []string{"Content-Length", "Content-Range", "Content-Type", "Cache-Control"}
 
 type Payload struct {
   Header http.Header
@@ -27,10 +26,10 @@ type Master struct {
   Observers []chan *Payload
 }
 
-func New(key string) *Master{
-  return &Master{key: key,}
-}
-
+var (
+  proxyHeaders = []string{"Content-Length", "Content-Range", "Content-Type", "Cache-Control"}
+  errorPayload = &Payload{Header: make(http.Header), Status: 500, Data: []byte{}, Finished: true,}
+)
 func (m *Master) Observed(observer chan *Payload) {
   m.lock.Lock()
   defer m.lock.Unlock()
@@ -38,8 +37,13 @@ func (m *Master) Observed(observer chan *Payload) {
 }
 
 func (m *Master) Run(response *http.Response, err error, masterHandler Handler) {
-  //todo handle errors
-  defer response.Body.Close()
+  if response != nil && response.Body != nil { defer response.Body.Close() }
+  if err != nil {
+    log.Println(err)
+    Cleanup(m.key)
+    m.flush(errorPayload)
+    return
+  }
 
   status := response.StatusCode
   header := make(http.Header, len(proxyHeaders))

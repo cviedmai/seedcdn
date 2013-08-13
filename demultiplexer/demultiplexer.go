@@ -45,7 +45,7 @@ func getMaster(key string) (*Master, bool) {
   master, ok = masters[key]
   if ok == true { return master, false }
 
-  master = New(key)
+  master = &Master{key: key,}
   masters[key] = master
   return master, true
 }
