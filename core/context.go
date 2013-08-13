@@ -1,17 +1,21 @@
 package core
 
 import (
+  "fmt"
   "math"
   "strconv"
   "net/http"
+  "crypto/md5"
   "seedcdn/header"
 )
 
 const CHUNK_SIZE = 2*1024*1024
 
 type Context struct {
-  Req *http.Request
   Chunk int
+  Key string
+  FileKey string
+  Req *http.Request
 }
 
 func NewContext(req *http.Request) *Context {
@@ -24,9 +28,13 @@ func NewContext(req *http.Request) *Context {
   } else {
     c.Chunk = int(math.Floor(float64(r[0].From) / float64(CHUNK_SIZE)))
   }
+  c.FileKey = Hash(req.URL.Path)
+  c.Key = c.FileKey + "_" + strconv.Itoa(c.Chunk)
   return c
 }
 
-func (c *Context) Key() string {
-  return c.Req.URL.String() + "_" + strconv.Itoa(c.Chunk)
+func Hash(value string) (string) {
+  h := md5.New()
+  h.Write([]byte(value))
+  return fmt.Sprintf("%x", h.Sum(nil))
 }

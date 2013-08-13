@@ -23,8 +23,14 @@ func TestSetsTheRightChuckWhenLargeRange(t *testing.T) {
   spec.Expect(c.Chunk).ToEqual(1)
 }
 
+func TestTheFileKeyIsOnlyBasedOnThePath(t *testing.T) {
+  spec := gspec.New(t)
+  c := NewContext(gspec.Request().Header("range", "bytes=30000000-90000000").Url("/test.json").Req)
+  spec.Expect(c.FileKey).ToEqual("0196f4b7a30827487e3272e9499749e9")
+}
+
 func TestTheKeyIncludesAllNecessaryParts(t *testing.T) {
   spec := gspec.New(t)
   c := NewContext(gspec.Request().Header("range", "bytes=30000000-90000000").Url("/test.json?page=1").Req)
-  spec.Expect(c.Key()).ToEqual("/test.json?page=1_14")
+  spec.Expect(c.Key).ToEqual("0196f4b7a30827487e3272e9499749e9_14")
 }
