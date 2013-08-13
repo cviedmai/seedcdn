@@ -16,18 +16,10 @@ type Handler func(payload *Payload)
 func Demultiplex(context *core.Context, slaveHandler Handler, masterHandler Handler) {
   master, new := getMaster(context.Key())
   if new == true {
-    go master.Run(proxy.Run(context))
-    go func() {
-      c := make(chan *Payload, 1)
-      master.Observed(c)
-      for {
-        payload := <- c
-        masterHandler(payload)
-        if payload.Finished { return }
-      }
-    }()
+    res, err := proxy.Run(context)
+    go master.Run(res, err, masterHandler)
   }
-  c := make(chan *Payload, 1)
+  c := make(chan *Payload)
   master.Observed(c)
   for {
     payload := <- c

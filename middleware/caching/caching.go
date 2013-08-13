@@ -7,7 +7,7 @@ import (
 )
 
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
-  demultiplexer.Demultiplex(context, toResponse(res), toDisk())
+  demultiplexer.Demultiplex(context, toResponse(res), toDisk(context))
 }
 
 func toResponse(res http.ResponseWriter) demultiplexer.Handler {
@@ -29,8 +29,8 @@ func toResponse(res http.ResponseWriter) demultiplexer.Handler {
   }
 }
 
-func toDisk() demultiplexer.Handler {
+func toDisk(context *core.Context) demultiplexer.Handler {
   return func(payload *demultiplexer.Payload) {
-    if payload.Finished == false { return }
+
   }
 }

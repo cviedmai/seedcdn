@@ -37,7 +37,7 @@ func (m *Master) Observed(observer chan *Payload) {
   m.Observers = append(m.Observers, observer)
 }
 
-func (m *Master) Run(response *http.Response, err error) {
+func (m *Master) Run(response *http.Response, err error, masterHandler Handler) {
   //todo handle errors
   defer response.Body.Close()
 
@@ -61,9 +61,15 @@ func (m *Master) Run(response *http.Response, err error) {
       //todo
     }
   }
+  final := &Payload{Header: header, Status: status, Data: data[0:read], Finished: true,}
+  //Flush the slaves (which releases them) before we do any IO
+  m.flush(final)
+  masterHandler(final)
 
+  //todo, linger around a bit to fufill any late joiners?
   Cleanup(m.key)
-  m.flush(&Payload{Header: header, Status: status, Data: data[0:read], Finished: true,})
+  //Maybe some new slaves joined before we cleaned up
+  m.flush(final)
 }
 
 func (m *Master) flush(payload *Payload) {
@@ -72,4 +78,5 @@ func (m *Master) flush(payload *Payload) {
   for _, observer := range m.Observers {
     go func (o chan *Payload) { o <- payload }(observer)
   }
+  if payload.Finished { m.Observers = make([]chan *Payload, 1) }
 }
