@@ -44,7 +44,8 @@ func (m *Master) Run(response *http.Response, err error, masterHandler Handler) 
   status := response.StatusCode
   header := make(http.Header, len(proxyHeaders))
   for _, h := range proxyHeaders {
-    header.Set(h, response.Header.Get(h))
+    value := response.Header.Get(h)
+    if len(value) > 0 { header.Set(h, value) }
   }
 
   data := make([]byte, core.CHUNK_SIZE)
