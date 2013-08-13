@@ -84,7 +84,7 @@ func (m *Master) flush(payload *Payload) {
 }
 
 func (m *Master) error(err error) {
-  log.Println(err)
+  log.Println("master: ", err)
   Cleanup(m.key)
   m.flush(errorPayload)
 }
