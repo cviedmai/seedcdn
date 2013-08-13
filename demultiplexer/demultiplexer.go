@@ -14,7 +14,7 @@ var (
 type Handler func(payload *Payload)
 
 func Demultiplex(context *core.Context, slaveHandler Handler, masterHandler Handler) {
-  master, new := getMaster(context.Key())
+  master, new := getMaster(context.Key)
   if new == true {
     res, err := proxy.Run(context)
     go master.Run(res, err, masterHandler)
