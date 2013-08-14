@@ -3,6 +3,7 @@ package seedcdn
 import (
   "net/http"
   "seedcdn/core"
+  "seedcdn/middleware/logs"
   "seedcdn/middleware/purge"
   "seedcdn/middleware/caching"
 )
@@ -13,7 +14,7 @@ var head *core.MiddlewareWrapper
 func init() {
   head = &core.MiddlewareWrapper {Middleware: purge.Run}
   prev := head
-  for _, middleware := range []core.MiddlewareLink{caching.Run} {
+  for _, middleware := range []core.MiddlewareLink{logs.Run, caching.Run} {
     wrapper := &core.MiddlewareWrapper {Middleware: middleware,}
     prev.Next = wrapper
     prev = wrapper

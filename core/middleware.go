@@ -20,3 +20,5 @@ func (wrapper *MiddlewareWrapper) Yield(context *Context, res http.ResponseWrite
   }
   wrapper.Middleware(context, res, next)
 }
+
+func NoopMiddleware(context *Context, res http.ResponseWriter) {}
