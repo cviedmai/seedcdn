@@ -21,7 +21,11 @@ var pool = bytepool.New(1024, 2048)
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
   //todo consistent hash around a configurable number of drives/paths
   root := "/tmp"
-  if fromDisk(root, res, context) { return }
+  if fromDisk(root, res, context) {
+    core.Stats.CacheHit()
+    return
+  }
+  core.Stats.CacheMiss()
   demultiplexer.Demultiplex(context, toResponse(res), toDisk(root, context))
 }
 

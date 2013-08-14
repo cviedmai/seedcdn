@@ -14,6 +14,7 @@ func init() {
 }
 
 func (h Handler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+  core.Stats.Request()
   context := core.NewContext(req)
   head.Yield(context, res)
 }
