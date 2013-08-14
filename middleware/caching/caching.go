@@ -9,6 +9,7 @@ import (
   "seedcdn/core"
   "seedcdn/demultiplexer"
   "github.com/viki-org/bytepool"
+  "github.com/stathat/consistent"
 )
 
 type CacheHeader struct {
@@ -17,10 +18,18 @@ type CacheHeader struct {
 }
 
 var pool = bytepool.New(1024, 2048)
+var drives *consistent.Consistent
+
+func init() {
+  drives = consistent.New()
+  for _, drive := range core.GetConfig().Drives {
+    drives.Add(drive)
+  }
+}
 
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
   //todo consistent hash around a configurable number of drives/paths
-  root := "/tmp"
+  root, _ := drives.Get(context.Bucket)
   if fromDisk(root, res, context) {
     core.Stats.CacheHit()
     return

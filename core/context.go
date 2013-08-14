@@ -15,6 +15,7 @@ type Context struct {
   Chunk int
   Key string
   Dir string
+  Bucket string
   DataFile string
   HeaderFile string
   Req *http.Request
@@ -30,9 +31,9 @@ func NewContext(req *http.Request) *Context {
   } else {
     c.Chunk = int(math.Floor(float64(r[0].From) / float64(CHUNK_SIZE)))
   }
-  bucket := Hash(req.URL.Path)
-  c.Key = bucket + "_" + strconv.Itoa(c.Chunk)
-  c.Dir = "/" + bucket[0:2] + "/" + bucket[0:4] + "/"
+  c.Bucket = Hash(req.URL.Path)
+  c.Key = c.Bucket + "_" + strconv.Itoa(c.Chunk)
+  c.Dir = "/" + c.Bucket[0:2] + "/" + c.Bucket[0:4] + "/"
   c.DataFile = c.Dir + c.Key + ".dat"
   c.HeaderFile = c.Dir + c.Key + ".hdr"
   return c

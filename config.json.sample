@@ -1,4 +1,5 @@
 {
   "listen": "localhost:8084",
-  "upstream": "s3."
+  "upstream": "s3.",
+  "drives": ["/tmp"]
 }
