@@ -31,7 +31,6 @@ func newRequest(context *core.Context, config *core.Config) *http.Request {
     to := from + int(core.CHUNK_SIZE) - 1
     header.Set("Range", "bytes=" + strconv.Itoa(from) + "-" + strconv.Itoa(to))
   }
-
   u := context.Req.URL
   return &http.Request{
     Close: false,
@@ -43,7 +42,7 @@ func newRequest(context *core.Context, config *core.Config) *http.Request {
       Scheme: "http",
       Opaque: u.Opaque,
       Host: config.Upstream,
-      Path: u.Path,
+      Path: config.Prefix + u.Path,
       RawQuery: u.RawQuery,
     },
   }

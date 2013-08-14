@@ -1,6 +1,7 @@
 {
   "listen": "localhost:8084",
-  "upstream": "s3.",
+  "upstream": "s3.amazonaws.com",
+  "prefix": "",
   "redis": "/tmp/redis.sock",
   "redisdb": 0,
   "drives": ["/tmp"],

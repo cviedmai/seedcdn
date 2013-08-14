@@ -14,6 +14,7 @@ type Config struct{
   RedisDB int
   Redis string
   Listen string
+  Prefix string
   Upstream string
   Drives []string
   RedisProtocol string
