@@ -8,31 +8,40 @@ import (
   "encoding/gob"
   "seedcdn/core"
   "seedcdn/demultiplexer"
+  "github.com/viki-org/bytepool"
 )
+
+type CacheHeader struct {
+  Header http.Header
+  Status int
+}
+
+var pool = bytepool.New(1024, 2048)
 
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
   //todo consistent hash around a configurable number of drives/paths
-  root := "/"
-  dir := path.Join(root, context.FileKey[0:2], context.FileKey[0:4], context.FileKey)
-  fullPath := path.Join(dir, context.FileKey)
-  if file, err := os.Open(fullPath); err == nil {
-    fromFile(res, file)
-    file.Close()
-    return
-  }
-  demultiplexer.Demultiplex(context, toResponse(res), toDisk(root, dir, fullPath, context.FileKey))
+  root := "/tmp"
+  if fromDisk(root, res, context) { return }
+  demultiplexer.Demultiplex(context, toResponse(res), toDisk(root, context))
 }
 
-func fromFile(res http.ResponseWriter, file *os.File) {
-  payload := new(demultiplexer.Payload)
-  if err := gob.NewDecoder(file).Decode(payload); err != nil {
-    log.Println("gob decode: ", err)
+
+func fromDisk(root string, res http.ResponseWriter, context *core.Context) bool {
+  headerFile, err := os.Open(root + context.HeaderFile)
+  if err != nil { return false }
+  defer headerFile.Close()
+
+  ch := new(CacheHeader)
+  if err := gob.NewDecoder(headerFile).Decode(ch); err != nil {
+    log.Println("header decode: ", err)
+    return false
   }
-  for key, value := range payload.Header {
+  for key, value := range ch.Header {
     res.Header()[key] = value
   }
-  res.WriteHeader(payload.Status)
-  res.Write(payload.Data)
+  res.Header().Set("X-Accel-Redirect", root + context.DataFile)
+  res.WriteHeader(ch.Status)
+  return true
 }
 
 func toResponse(res http.ResponseWriter) demultiplexer.Handler {
@@ -54,19 +63,38 @@ func toResponse(res http.ResponseWriter) demultiplexer.Handler {
   }
 }
 
-func toDisk(root, dir, fullPath, file string) demultiplexer.Handler {
+func toDisk(root string, context *core.Context) demultiplexer.Handler {
   return func(payload *demultiplexer.Payload) {
-    tmp := path.Join(root, "tmp", file)
-    f, err := os.Create(tmp)
-    if err != nil {
-      log.Println("create tmp:", err)
+    if err := os.MkdirAll(root + context.Dir, 0744); err != nil {
+      log.Println("mkdir: ", err)
       return
     }
-
-    gob.NewEncoder(f).Encode(payload)
-    f.Close()
-
-    if err = os.MkdirAll(dir, 0744); err != nil { log.Println("mkdir: ", err) }
-    if err = os.Rename(tmp, fullPath); err != nil { log.Println("rename: ", err) }
+    if write(root, context.Key, context.DataFile, payload.Data) {
+      bytes := pool.Checkout()
+      err := gob.NewEncoder(bytes).Encode(&CacheHeader{payload.Header, payload.Status})
+      if err != nil { println(err.Error()) }
+      write(root, context.Key, context.HeaderFile, bytes.Bytes())
+      bytes.Close()
+    }
   }
+}
+
+func write(root, key, file string, data []byte) bool {
+  tmp := path.Join(root, "tmp", key)
+  f, err := os.Create(tmp)
+  if err != nil {
+    log.Println("create tmp: ", err)
+    return false
+  }
+  defer f.Close()
+  _, err = f.Write(data)
+  if err != nil {
+    log.Println("write: ", err)
+    return false
+  }
+  if err = os.Rename(tmp, root + file); err != nil {
+    log.Println("rename: ", err)
+    return false
+  }
+  return true
 }
