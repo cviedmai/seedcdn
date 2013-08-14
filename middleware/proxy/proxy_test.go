@@ -16,8 +16,16 @@ func TestCreatesARequestWithTheCorrectHostAndUrl(t *testing.T) {
 
 func TestCreatesARequestWithTheCorrectRange(t *testing.T) {
   spec := gspec.New(t)
-  context := core.NewContext(gspec.Request().Req)
+  context := core.NewContext(gspec.Request().Url("somefile.mp4").Req)
+  context.Chunk = 3
+  req := newRequest(context, &core.Config{RangedExtensions: map[string]bool{".mp4": true}})
+  spec.Expect(req.Header.Get("range")).ToEqual("bytes=6291456-8388607")
+}
+
+func TestIgnoresTheRangeForNonRangeTypes(t *testing.T) {
+  spec := gspec.New(t)
+  context := core.NewContext(gspec.Request().Url("somefile.mp4").Req)
   context.Chunk = 3
   req := newRequest(context, new(core.Config))
-  spec.Expect(req.Header.Get("range")).ToEqual("bytes=6291456-8388607")
+  spec.Expect(req.Header.Get("range")).ToEqual("")
 }

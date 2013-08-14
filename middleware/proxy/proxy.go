@@ -2,6 +2,7 @@ package proxy
 
 import (
   "net"
+  "path"
   "time"
   "strconv"
   "strings"
@@ -24,8 +25,12 @@ func Run(context *core.Context) (*http.Response, error) {
 }
 
 func newRequest(context *core.Context, config *core.Config) *http.Request {
-  from := context.Chunk * int(core.CHUNK_SIZE)
-  to := from + int(core.CHUNK_SIZE) - 1
+  header := make(http.Header)
+  if config.RangedExtensions[path.Ext(context.Req.URL.Path)] == true {
+    from := context.Chunk * int(core.CHUNK_SIZE)
+    to := from + int(core.CHUNK_SIZE) - 1
+    header.Set("Range", "bytes=" + strconv.Itoa(from) + "-" + strconv.Itoa(to))
+  }
 
   u := context.Req.URL
   return &http.Request{
@@ -33,7 +38,7 @@ func newRequest(context *core.Context, config *core.Config) *http.Request {
     Host: config.Upstream,
     Method: "GET",
     Proto: "HTTP/1.1", ProtoMajor: 1, ProtoMinor: 1,
-    Header: http.Header{"Range": []string{"bytes=" + strconv.Itoa(from) + "-" + strconv.Itoa(to)}},
+    Header: header,
     URL: &url.URL{
       Scheme: "http",
       Opaque: u.Opaque,

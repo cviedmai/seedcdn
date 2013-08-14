@@ -15,6 +15,7 @@ type Config struct{
   Upstream string
   Drives []string
   PurgeWhiteList map[string]bool
+  RangedExtensions map[string]bool
 }
 
 var config *Config
@@ -26,7 +27,7 @@ func GetConfig() *Config {
 func init () {
   //this is sooo horrible
   if strings.Contains(os.Args[0], ".test")  {
-    config = &Config{Upstream: "test.viki.io", Drives: []string{"/tmp"}, PurgeWhiteList: map[string]bool{"127.0.0.1": true},}
+    config = &Config{Upstream: "test.viki.io", Drives: []string{"/tmp"}, PurgeWhiteList: map[string]bool{"127.0.0.1": true}, RangedExtensions: map[string]bool{".mp4": true}}
   } else {
     data, err := ioutil.ReadFile("config.json")
     if err != nil { log.Fatal(err) }

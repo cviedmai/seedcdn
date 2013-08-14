@@ -2,5 +2,6 @@
   "listen": "localhost:8084",
   "upstream": "s3.",
   "drives": ["/tmp"],
-  "purgeWhiteList": {"127.0.0.1": true}
+  "purgeWhiteList": {"127.0.0.1": true},
+  "rangedExtensions": {"mp4": true}
 }
