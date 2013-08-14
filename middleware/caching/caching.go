@@ -9,7 +9,6 @@ import (
   "seedcdn/core"
   "seedcdn/demultiplexer"
   "github.com/viki-org/bytepool"
-  "github.com/stathat/consistent"
 )
 
 type CacheHeader struct {
@@ -18,29 +17,19 @@ type CacheHeader struct {
 }
 
 var pool = bytepool.New(1024, 2048)
-var drives *consistent.Consistent
-
-func init() {
-  drives = consistent.New()
-  for _, drive := range core.GetConfig().Drives {
-    drives.Add(drive)
-  }
-}
 
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
-  //todo consistent hash around a configurable number of drives/paths
-  root, _ := drives.Get(context.Bucket)
-  if fromDisk(root, res, context) {
+  if fromDisk(res, context) {
     core.Stats.CacheHit()
     return
   }
   core.Stats.CacheMiss()
-  demultiplexer.Demultiplex(context, toResponse(res), toDisk(root, context))
+  demultiplexer.Demultiplex(context, toResponse(res), toDisk(context))
 }
 
 
-func fromDisk(root string, res http.ResponseWriter, context *core.Context) bool {
-  headerFile, err := os.Open(root + context.HeaderFile)
+func fromDisk(res http.ResponseWriter, context *core.Context) bool {
+  headerFile, err := os.Open(context.HeaderFile)
   if err != nil { return false }
   defer headerFile.Close()
 
@@ -52,7 +41,7 @@ func fromDisk(root string, res http.ResponseWriter, context *core.Context) bool 
   for key, value := range ch.Header {
     res.Header()[key] = value
   }
-  res.Header().Set("X-Accel-Redirect", root + context.DataFile)
+  res.Header().Set("X-Accel-Redirect", context.DataFile)
   res.WriteHeader(ch.Status)
   return true
 }
@@ -76,24 +65,24 @@ func toResponse(res http.ResponseWriter) demultiplexer.Handler {
   }
 }
 
-func toDisk(root string, context *core.Context) demultiplexer.Handler {
+func toDisk(context *core.Context) demultiplexer.Handler {
   return func(payload *demultiplexer.Payload) {
-    if err := os.MkdirAll(root + context.Dir, 0744); err != nil {
+    if err := os.MkdirAll(context.Dir, 0744); err != nil {
       log.Println("mkdir: ", err)
       return
     }
-    if write(root, context.Key, context.DataFile, payload.Data) {
+    if write(context.TempDir, context.Key, context.DataFile, payload.Data) {
       bytes := pool.Checkout()
       err := gob.NewEncoder(bytes).Encode(&CacheHeader{payload.Header, payload.Status})
       if err != nil { println(err.Error()) }
-      write(root, context.Key, context.HeaderFile, bytes.Bytes())
+      write(context.TempDir, context.Key, context.HeaderFile, bytes.Bytes())
       bytes.Close()
     }
   }
 }
 
-func write(root, key, file string, data []byte) bool {
-  tmp := path.Join(root, "tmp", key)
+func write(tempDir, key, file string, data []byte) bool {
+  tmp := path.Join(tempDir + key)
   f, err := os.Create(tmp)
   if err != nil {
     log.Println("create tmp: ", err)
@@ -105,7 +94,7 @@ func write(root, key, file string, data []byte) bool {
     log.Println("write: ", err)
     return false
   }
-  if err = os.Rename(tmp, root + file); err != nil {
+  if err = os.Rename(tmp, file); err != nil {
     log.Println("rename: ", err)
     return false
   }

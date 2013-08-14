@@ -6,6 +6,8 @@ import (
   "encoding/json"
 )
 
+const CHUNK_SIZE = 2*1024*1024
+
 type Config struct{
   Listen string
   Upstream string
