@@ -1,5 +1,6 @@
 {
   "listen": "localhost:8084",
   "upstream": "s3.",
-  "drives": ["/tmp"]
+  "drives": ["/tmp"],
+  "purgeWhiteList": {"127.0.0.1": true}
 }
