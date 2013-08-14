@@ -1,7 +1,9 @@
 package core
 
 import (
+  "os"
   "log"
+  "strings"
   "io/ioutil"
   "encoding/json"
 )
@@ -21,9 +23,14 @@ func GetConfig() *Config {
 }
 
 func init () {
-  data, err := ioutil.ReadFile("config.json")
-  if err != nil { log.Fatal(err) }
-  loadConfig(data)
+  //this is sooo horrible
+  if strings.Contains(os.Args[0], ".test")  {
+    config = &Config{Upstream: "test.viki.io", Drives: []string{"/tmp"},}
+  } else {
+    data, err := ioutil.ReadFile("config.json")
+    if err != nil { log.Fatal(err) }
+    loadConfig(data)
+  }
 }
 
 func loadConfig(data []byte) {
