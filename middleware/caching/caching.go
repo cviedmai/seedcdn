@@ -54,6 +54,7 @@ func toResponse(res http.ResponseWriter) demultiplexer.Handler {
       for key, value := range payload.Header {
         res.Header()[key] = value
       }
+      res.Header().Set("Accept-Ranges", "bytes")
       res.WriteHeader(payload.Status)
       sentHeaders = true
     }
@@ -67,7 +68,7 @@ func toResponse(res http.ResponseWriter) demultiplexer.Handler {
 
 func toDisk(context *core.Context) demultiplexer.Handler {
   return func(payload *demultiplexer.Payload) {
-    if err := os.MkdirAll(context.Dir, 0744); err != nil {
+    if err := os.MkdirAll(context.Dir, 0755); err != nil {
       log.Println("mkdir: ", err)
       return
     }

@@ -6,5 +6,5 @@
   "redisdb": 0,
   "drives": ["/tmp"],
   "purgeWhiteList": {"127.0.0.1": true},
-  "rangedExtensions": {"mp4": true}
+  "rangedExtensions": {".mp4": true}
 }
