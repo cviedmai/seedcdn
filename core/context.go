@@ -19,32 +19,24 @@ func init() {
 }
 
 type Context struct {
-  Chunk int
   Key string
   Dir string
   TempDir string
+  Chunks []*Chunk
   DataFile string
   HeaderFile string
   Req *http.Request
 }
 
 func NewContext(req *http.Request) *Context {
-  c := &Context {
-    Req: req,
-  }
-  r := header.ParseRange(req.Header.Get("range"))
-  if len(r) == 0 {
-    c.Chunk = 0
-  } else {
-    c.Chunk = int(math.Floor(float64(r[0].From) / float64(CHUNK_SIZE)))
-  }
+  c := &Context {Req: req,}
   bucket := Hash(req.URL.Path)
   drive, _ := drives.Get(bucket)
-  c.Key = bucket + "_" + strconv.Itoa(c.Chunk)
   c.Dir = drive + "/" + bucket[0:2] + "/" + bucket[0:4] + "/" + bucket + "/"
   c.TempDir = drive + "/tmp/"
-  c.DataFile = c.Dir + c.Key + ".dat"
-  c.HeaderFile = c.Dir + c.Key + ".hdr"
+  c.HeaderFile = c.Dir + bucket + ".hdr"
+
+  ranges := header.ParseRange(req.Header.Get("range"))
   return c
 }
 

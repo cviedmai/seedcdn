@@ -8,7 +8,7 @@ import (
 func TestAnEmptyRange(t *testing.T) {
   spec := gspec.New(t)
   ranges := ParseRange("")
-  spec.Expect(len(ranges)).ToEqual(0)
+  spec.Expect(ranges[0]).ToEqual(*&Range{0, 0})
 }
 
 func TestASimpleRange(t *testing.T) {

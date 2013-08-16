@@ -9,10 +9,10 @@ type Range struct {
   To int
 }
 
+var fullRange = []Range{*&Range{0, 0}}
+
 func ParseRange(raw string) []Range {
-  if len(raw) == 0 {
-    return nil
-  }
+  if len(raw) == 0 { return fullRange }
   var ranges []Range
   length := len(raw)
   start := 6 //bytes=

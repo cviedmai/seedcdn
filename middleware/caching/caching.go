@@ -27,7 +27,6 @@ func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) 
   demultiplexer.Demultiplex(context, toResponse(res), toDisk(context))
 }
 
-
 func fromDisk(res http.ResponseWriter, context *core.Context) bool {
   headerFile, err := os.Open(context.HeaderFile)
   if err != nil { return false }

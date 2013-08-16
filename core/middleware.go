@@ -14,9 +14,11 @@ type MiddlewareWrapper struct {
 }
 
 func (wrapper *MiddlewareWrapper) Yield(context *Context, res http.ResponseWriter) {
-  var next  Middleware
+  var next Middleware
   if wrapper.Next != nil {
     next = wrapper.Next.Yield
+  } else {
+    next = NoopMiddleware
   }
   wrapper.Middleware(context, res, next)
 }
