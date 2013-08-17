@@ -15,12 +15,12 @@ func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) 
 }
 
 
-func calculateChunks(context *core.Context, r header.Range) []*core.Chunk {
+func calculateChunks(context *core.Context, r header.Range) []core.Chunk {
   if r.To == 0 {
-    return []*core.Chunk{&core.Chunk{From: r.From,}}
+    return []core.Chunk{*&core.Chunk{From: r.From,}}
   }
 
-  chunks := make([]*core.Chunk, 0, 2)
+  chunks := make([]core.Chunk, 0, 2)
   for i := r.From; i <= r.To; i += core.CHUNK_SIZE {
     n := int(math.Floor(float64(i) / float64(core.CHUNK_SIZE)))
     from := i
@@ -36,7 +36,7 @@ func calculateChunks(context *core.Context, r header.Range) []*core.Chunk {
       Key: key,
       DataFile: context.Dir + key,
     }
-    chunks = append(chunks, chunk)
+    chunks = append(chunks, *chunk)
   }
   return chunks
 }

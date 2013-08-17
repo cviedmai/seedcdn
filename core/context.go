@@ -21,7 +21,7 @@ type Context struct {
   Key string
   Dir string
   TempDir string
-  Chunks []*Chunk
+  Chunks []Chunk
   HeaderFile string
   Req *http.Request
 }

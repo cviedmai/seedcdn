@@ -25,7 +25,7 @@ func TestCallsTheNextMiddleware(t *testing.T) {
 }
 
 func TestLogsStatisticsToRedis(t *testing.T) {
-  conn := pool.Get()
+  conn := core.RedisPool.Get()
   defer cleanup(conn)
   spec := gspec.New(t)
   Run(core.NewContext(gspec.Request().Url("/something/funny.txt").Req), nil, core.NoopMiddleware)
