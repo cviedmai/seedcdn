@@ -3,7 +3,9 @@ package chunker
 import (
   "fmt"
   "testing"
+  "net/http"
   "seedcdn/core"
+  "net/http/httptest"
   "github.com/viki-org/gspec"
 )
 
@@ -43,6 +45,19 @@ func TestHandlesARangeAcrossMultipleChunks(t *testing.T) {
   spec.Expect(context.Chunks[2]).ToEqual(buildChunk(10485760, 12000000, "6666cd76f96956469e7be39d750cc7d9_2", "/tmp/66/6666/6666cd76f96956469e7be39d750cc7d9/6666cd76f96956469e7be39d750cc7d9_2"))
 }
 
+func TestCallsTheNextMiddleware(t *testing.T) {
+  spec := gspec.New(t)
+  context := core.NewContext(gspec.Request().Req)
+  res := httptest.NewRecorder()
+  var called bool
+  next := func (c *core.Context, r http.ResponseWriter) {
+    spec.Expect(c).ToEqual(context)
+    spec.Expect(r).ToEqual(res)
+    called = true
+  }
+  Run(context, res, next)
+  spec.Expect(called).ToEqual(true)
+}
 
 func buildChunk(from int, to int, key string, dataFile string) core.Chunk {
   return *&core.Chunk{
