@@ -2,11 +2,8 @@ package core
 
 import (
   "fmt"
-  "math"
-  "strconv"
   "net/http"
   "crypto/md5"
-  "seedcdn/header"
   "github.com/stathat/consistent"
 )
 
@@ -19,25 +16,28 @@ func init() {
 }
 
 type Context struct {
+  bucket string
+
   Key string
   Dir string
   TempDir string
   Chunks []*Chunk
-  DataFile string
   HeaderFile string
   Req *http.Request
 }
 
 func NewContext(req *http.Request) *Context {
   c := &Context {Req: req,}
-  bucket := Hash(req.URL.Path)
-  drive, _ := drives.Get(bucket)
-  c.Dir = drive + "/" + bucket[0:2] + "/" + bucket[0:4] + "/" + bucket + "/"
+  c.bucket = Hash(req.URL.Path)
+  drive, _ := drives.Get(c.bucket)
+  c.Dir = drive + "/" + c.bucket[0:2] + "/" + c.bucket[0:4] + "/" + c.bucket + "/"
   c.TempDir = drive + "/tmp/"
-  c.HeaderFile = c.Dir + bucket + ".hdr"
-
-  ranges := header.ParseRange(req.Header.Get("range"))
+  c.HeaderFile = c.Dir + c.bucket + ".hdr"
   return c
+}
+
+func (c *Context) File(postfix string) string {
+  return c.bucket + postfix
 }
 
 func Hash(value string) (string) {
