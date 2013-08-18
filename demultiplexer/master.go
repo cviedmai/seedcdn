@@ -16,6 +16,7 @@ const (
 type Payload struct {
   Header http.Header
   Status int
+  ContentLength int
   Data []byte
   Finished bool
 }
@@ -49,8 +50,9 @@ func (m *Master) Run(response *http.Response, err error, masterHandler Handler) 
     value := response.Header.Get(h)
     if len(value) > 0 { header.Set(h, value) }
   }
-  if response.ContentLength < 1 {
-    m.finish(&Payload{header, status, nil, true,}, nil)
+  contentLength := int(response.ContentLength)
+  if contentLength < 1 {
+    m.finish(&Payload{header, status, 0, nil, true,}, nil)
     return
   }
 
@@ -60,7 +62,7 @@ func (m *Master) Run(response *http.Response, err error, masterHandler Handler) 
     n, err := response.Body.Read(data[read:])
     if n > 0 {
       read += n
-      m.flush(&Payload{header, status, data[0:read], false,})
+      m.flush(&Payload{header, status, contentLength, data[0:read], false,})
     }
     if err == io.EOF {
       break
@@ -69,7 +71,7 @@ func (m *Master) Run(response *http.Response, err error, masterHandler Handler) 
       return
     }
   }
-  final := &Payload{header, status, data[0:read], true,}
+  final := &Payload{header, status, contentLength, data[0:read], true}
   //Flush the slaves (which releases them) before we do any IO
   m.flush(final)
   masterHandler(final)

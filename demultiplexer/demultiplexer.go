@@ -12,7 +12,7 @@ var (
 
 type Handler func(payload *Payload)
 
-func Demultiplex(context *core.Context, chunk *core.Chunk, slaveHandler Handler, masterHandler Handler) {
+func Demultiplex(context *core.Context, chunk *core.Chunk, slaveHandler Handler, masterHandler Handler) int {
   master, new := getMaster(context.Key)
   if new == true {
     res, err := download(context, chunk)
@@ -23,8 +23,9 @@ func Demultiplex(context *core.Context, chunk *core.Chunk, slaveHandler Handler,
   for {
     payload := <- c
     slaveHandler(payload)
-    if payload.Finished { return }
+    if payload.Finished { return payload.ContentLength }
   }
+
 }
 
 func Cleanup(key string) {

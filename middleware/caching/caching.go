@@ -17,34 +17,38 @@ type CacheHeader struct {
 var pool = bytepool.New(1024, 2048)
 
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
-  first := context.Chunks[0]
-  if first.To == 0 {
-    drain(first.N, context, res)
-  } else {
+  if context.Fixed {
     for _, chunk := range context.Chunks {
       serverChunk(context, res, chunk)
     }
+  } else {
+    drain(context, res)
   }
 }
 
-func drain(fromIndex int, context *core.Context, res http.ResponseWriter) {
-  for i := fromIndex; true; i++ {
-    chunk := core.GetChunk(i, true)
-    serverChunk(context, res, chunk)
-  }
+func drain(context *core.Context, res http.ResponseWriter) {
+  first := context.Chunks[0]
+  contentLength := serverChunk(context, res, first)
+
+  //todo, now that we have the content length, we can generate all the necessary chunks
+  // for i := 0; true; i++ {
+  //   chunk := core.GetChunk(i, true)
+  //   serverChunk(context, res, chunk)
+  // }
 }
 
-func serverChunk(context *core.Context, res http.ResponseWriter, chunk *core.Chunk) {
+func serverChunk(context *core.Context, res http.ResponseWriter, chunk *core.Chunk) int {
   dataFile := context.Dir + context.ChunkFile(chunk)
   if file, err := os.Open(dataFile); err == nil {
     core.Stats.CacheHit()
     if chunk.From > 0 { file.Seek(chunk.From64, 0) }
     io.CopyN(res, file, chunk.To64 - chunk.From64)
     file.Close()
-  } else {
-    core.Stats.CacheMiss()
-    demultiplexer.Demultiplex(context, chunk, toResponse(res, chunk), toDisk(context))
+    //when called from dain, we need to get the content length!
+    return 0
   }
+  core.Stats.CacheMiss()
+  return demultiplexer.Demultiplex(context, chunk, toResponse(res, chunk), toDisk(context))
 }
 
 
