@@ -21,6 +21,7 @@ type Context struct {
 
   Key string
   Dir string
+  Fixed bool
   TempDir string
   Chunks []*Chunk
   HeaderFile string

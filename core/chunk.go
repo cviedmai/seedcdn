@@ -5,8 +5,7 @@ import (
   "net/http"
 )
 
-var fixdChunks map[int]*Chunk
-var openChunks map[int]*Chunk
+var chunks map[int]*Chunk
 
 type Chunk struct {
   From int
@@ -18,36 +17,29 @@ type Chunk struct {
 }
 
 func init() {
-  fixdChunks = make(map[int]*Chunk, 10000)
-  openChunks = make(map[int]*Chunk, 10000)
+  chunks = make(map[int]*Chunk, 10000)
   for i := 0; i < 10000; i++ {
-    fixdChunks[i] = makeChunk(i, true)
-    openChunks[i] = makeChunk(i, false)
+    chunks[i] = makeChunk(i)
   }
 }
 
-func GetChunk(n int, fixed bool) *Chunk {
-  if fixed {
-    return fixdChunks[n]
-  }
-  return openChunks[n]
+func GetChunk(n int) *Chunk {
+  return chunks[n]
 }
 
-func makeChunk(i int, fixed bool) *Chunk {
+func makeChunk(i int) *Chunk {
   from := i * CHUNK_SIZE
-  to := 0
+  to := (i+1) * CHUNK_SIZE - 1
 
-  var header http.Header
-  if fixed {
-    to = (i+1) * CHUNK_SIZE - 1
-    header.Set("Range", "bytes=" + strconv.Itoa(from) + "-" + strconv.Itoa(to))
-  }
+  header := make(http.Header, 1)
+  header.Set("Range", "bytes=" + strconv.Itoa(from) + "-" + strconv.Itoa(to))
+
   return &Chunk{
     From: from,
     To: to,
     From64: int64(from),
     To64: int64(to),
     N: i,
-    Header: header,
+   // Header: header,
   }
 }
