@@ -1,11 +1,9 @@
 package caching
 
 import (
+  "io"
   "os"
-  "log"
-  "path"
   "net/http"
-  "encoding/gob"
   "seedcdn/core"
   "seedcdn/demultiplexer"
   "github.com/viki-org/bytepool"
@@ -19,24 +17,34 @@ type CacheHeader struct {
 var pool = bytepool.New(1024, 2048)
 
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
-  for _, chunk := range context.Chunks {
-    if chunk.To == 0 {
-      //todo get entire file
-    } else {
-      serverChunk(context, res, &chunk)
+  first := context.Chunks[0]
+  if first.To == 0 {
+    drain(first.N, context, res)
+  } else {
+    for _, chunk := range context.Chunks {
+      serverChunk(context, res, chunk)
     }
   }
 }
 
+func drain(fromIndex int, context *core.Context, res http.ResponseWriter) {
+  for i := fromIndex; true; i++ {
+    chunk := core.GetChunk(i, true)
+    serverChunk(context, res, chunk)
+  }
+}
+
 func serverChunk(context *core.Context, res http.ResponseWriter, chunk *core.Chunk) {
-  if file, err := os.Open(chunk.DataFile); err == nil {
+  dataFile := context.Dir + context.ChunkFile(chunk)
+  if file, err := os.Open(dataFile); err == nil {
     core.Stats.CacheHit()
-    if chunk.From > 0 { file.Seek(chunk.From) }
-    io.CopyN(res, file, chunk.To - chunk.From)
+    if chunk.From > 0 { file.Seek(chunk.From64, 0) }
+    io.CopyN(res, file, chunk.To64 - chunk.From64)
     file.Close()
   } else {
     core.Stats.CacheMiss()
-    demultiplexer.Demultiplex(context, toResponse(res, chunk), toDisk(context))
+    demultiplexer.Demultiplex(context, chunk, toResponse(res, chunk), toDisk(context))
+  }
 }
 
 
@@ -44,9 +52,9 @@ func toResponse(res http.ResponseWriter, chunk *core.Chunk) demultiplexer.Handle
   from := chunk.From
   return func(payload *demultiplexer.Payload) {
     to := len(payload.Data)
-    if to > from
+    if to > from {
       if to > chunk.To { to = chunk.To }
-      res.Write(payload.Data[read:to])
+      res.Write(payload.Data[from:to])
       from = to
     }
   }
@@ -86,6 +94,7 @@ func write(tempDir, key, file string, data []byte) bool {
   //   return false
   // }
   // return true
+  return true
 }
 
 

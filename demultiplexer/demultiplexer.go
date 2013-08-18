@@ -3,7 +3,6 @@ package demultiplexer
 import (
   "sync"
   "seedcdn/core"
-  "seedcdn/middleware/proxy"
 )
 
 var (
@@ -13,10 +12,10 @@ var (
 
 type Handler func(payload *Payload)
 
-func Demultiplex(context *core.Context, slaveHandler Handler, masterHandler Handler) {
+func Demultiplex(context *core.Context, chunk *core.Chunk, slaveHandler Handler, masterHandler Handler) {
   master, new := getMaster(context.Key)
   if new == true {
-    res, err := proxy.Run(context)
+    res, err := download(context, chunk)
     go master.Run(res, err, masterHandler)
   }
   c := make(chan *Payload)

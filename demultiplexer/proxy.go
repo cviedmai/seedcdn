@@ -1,10 +1,8 @@
-package proxy
+package demultiplexer
 
 import (
   "net"
-  "path"
   "time"
-  "strconv"
   "strings"
   "net/url"
   "net/http"
@@ -19,25 +17,19 @@ var transport = &http.Transport{
   Dial: dial,
 }
 
-func Run(context *core.Context) (*http.Response, error) {
-  request := newRequest(context, core.GetConfig())
+func download(context *core.Context, chunk *core.Chunk) (*http.Response, error) {
+  request := newRequest(context, chunk, core.GetConfig())
   return transport.RoundTrip(request)
 }
 
-func newRequest(context *core.Context, config *core.Config) *http.Request {
-  header := make(http.Header)
-  if config.RangedExtensions[path.Ext(context.Req.URL.Path)] == true {
-    from := context.Chunk * int(core.CHUNK_SIZE)
-    to := from + int(core.CHUNK_SIZE) - 1
-    header.Set("Range", "bytes=" + strconv.Itoa(from) + "-" + strconv.Itoa(to))
-  }
+func newRequest(context *core.Context, chunk *core.Chunk, config *core.Config) *http.Request {
   u := context.Req.URL
   return &http.Request{
     Close: false,
     Host: config.Upstream,
     Method: "GET",
     Proto: "HTTP/1.1", ProtoMajor: 1, ProtoMinor: 1,
-    Header: header,
+    Header: chunk.Header,
     URL: &url.URL{
       Scheme: "http",
       Opaque: u.Opaque,

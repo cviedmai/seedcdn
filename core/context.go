@@ -2,6 +2,7 @@ package core
 
 import (
   "fmt"
+  "strconv"
   "net/http"
   "crypto/md5"
   "github.com/stathat/consistent"
@@ -21,7 +22,7 @@ type Context struct {
   Key string
   Dir string
   TempDir string
-  Chunks []Chunk
+  Chunks []*Chunk
   HeaderFile string
   Req *http.Request
 }
@@ -36,8 +37,8 @@ func NewContext(req *http.Request) *Context {
   return c
 }
 
-func (c *Context) File(postfix string) string {
-  return c.bucket + postfix
+func (c *Context) ChunkFile(chunk *Chunk) string {
+  return c.bucket + "_" + strconv.Itoa(chunk.N)
 }
 
 func Hash(value string) (string) {

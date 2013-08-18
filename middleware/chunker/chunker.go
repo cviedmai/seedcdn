@@ -1,8 +1,6 @@
 package chunker
 
 import (
-  "math"
-  "strconv"
   "net/http"
   "seedcdn/core"
   "seedcdn/header"
@@ -14,29 +12,16 @@ func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) 
   next(context, res)
 }
 
-
-func calculateChunks(context *core.Context, r header.Range) []core.Chunk {
+func calculateChunks(context *core.Context, r header.Range) []*core.Chunk {
   if r.To == 0 {
-    return []core.Chunk{*&core.Chunk{From: r.From,}}
+    n := r.From / core.CHUNK_SIZE
+    return []*core.Chunk{core.GetChunk(n, false)}
   }
 
-  chunks := make([]core.Chunk, 0, 2)
+  chunks := make([]*core.Chunk, 0, 2)
   for i := r.From; i <= r.To; i += core.CHUNK_SIZE {
-    n := int(math.Floor(float64(i) / float64(core.CHUNK_SIZE)))
-    from := i
-    if i != r.From { from = core.CHUNK_SIZE * n }
-
-    to := (n + 1) * core.CHUNK_SIZE - 1
-    if to > r.To { to = r.To }
-    key := context.File("_" + strconv.Itoa(n))
-
-    chunk := &core.Chunk{
-      From: from,
-      To: to,
-      Key: key,
-      DataFile: context.Dir + key,
-    }
-    chunks = append(chunks, *chunk)
+    n := i / core.CHUNK_SIZE
+    chunks = append(chunks, core.GetChunk(n, true))
   }
   return chunks
 }
