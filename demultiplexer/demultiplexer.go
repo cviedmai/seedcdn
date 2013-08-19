@@ -25,7 +25,6 @@ func Demultiplex(context *core.Context, chunk *core.Chunk, slaveHandler Handler,
     slaveHandler(payload)
     if payload.Finished { return payload.ContentLength }
   }
-
 }
 
 func Cleanup(key string) {

@@ -40,6 +40,6 @@ func makeChunk(i int) *Chunk {
     From64: int64(from),
     To64: int64(to),
     N: i,
-   // Header: header,
+    Header: header,
   }
 }

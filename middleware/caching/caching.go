@@ -18,8 +18,8 @@ var pool = bytepool.New(1024, 2048)
 
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
   if context.Fixed {
-    for _, chunk := range context.Chunks {
-      serverChunk(context, res, chunk)
+    for i, chunk := range context.Chunks {
+      serverChunk(context, res, chunk, i == 0)
     }
   } else {
     drain(context, res)
@@ -28,16 +28,17 @@ func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) 
 
 func drain(context *core.Context, res http.ResponseWriter) {
   first := context.Chunks[0]
-  contentLength := serverChunk(context, res, first)
+  contentLength := serverChunk(context, res, first, true)
 
-  //todo, now that we have the content length, we can generate all the necessary chunks
-  // for i := 0; true; i++ {
-  //   chunk := core.GetChunk(i, true)
-  //   serverChunk(context, res, chunk)
-  // }
+  i := (first.From / core.CHUNK_SIZE + core.CHUNK_SIZE) / core.CHUNK_SIZE
+  l := contentLength / core.CHUNK_SIZE + 1
+  for ; i < l; i++ {
+    chunk := core.GetChunk(i)
+    serverChunk(context, res, chunk, false)
+  }
 }
 
-func serverChunk(context *core.Context, res http.ResponseWriter, chunk *core.Chunk) int {
+func serverChunk(context *core.Context, res http.ResponseWriter, chunk *core.Chunk, first bool) int {
   dataFile := context.Dir + context.ChunkFile(chunk)
   if file, err := os.Open(dataFile); err == nil {
     core.Stats.CacheHit()
@@ -48,13 +49,19 @@ func serverChunk(context *core.Context, res http.ResponseWriter, chunk *core.Chu
     return 0
   }
   core.Stats.CacheMiss()
-  return demultiplexer.Demultiplex(context, chunk, toResponse(res, chunk), toDisk(context))
+  return demultiplexer.Demultiplex(context, chunk, toResponse(res, chunk, first), toDisk(context))
 }
 
-
-func toResponse(res http.ResponseWriter, chunk *core.Chunk) demultiplexer.Handler {
+func toResponse(res http.ResponseWriter, chunk *core.Chunk, first bool) demultiplexer.Handler {
   from := chunk.From
+  sentHeaders := !first
   return func(payload *demultiplexer.Payload) {
+    if sentHeaders == false {
+      for k, v := range payload.Header {
+        res.Header()[k] = v
+      }
+      sentHeaders = true
+    }
     to := len(payload.Data)
     if to > from {
       if to > chunk.To { to = chunk.To }
