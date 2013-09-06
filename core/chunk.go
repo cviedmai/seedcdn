@@ -8,11 +8,11 @@ import (
 var chunks map[int]*Chunk
 
 type Chunk struct {
-  From int
-  To int
-  From64 int64
-  To64 int64
   N int
+  To int
+  From int
+  To64 int64
+  From64 int64
   Header http.Header
 }
 

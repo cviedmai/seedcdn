@@ -3,6 +3,7 @@ package caching
 import (
   "io"
   "os"
+  "strconv"
   "net/http"
   "seedcdn/core"
   "seedcdn/demultiplexer"
@@ -28,13 +29,18 @@ func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) 
 
 func drain(context *core.Context, res http.ResponseWriter) {
   first := context.Chunks[0]
-  contentLength := serverChunk(context, res, first, true)
-
+  totalLength := serverChunk(context, res, first, true)
   i := (first.From / core.CHUNK_SIZE + core.CHUNK_SIZE) / core.CHUNK_SIZE
-  l := contentLength / core.CHUNK_SIZE + 1
+  l := totalLength / core.CHUNK_SIZE + 1
+  cc := res.(http.CloseNotifier).CloseNotify()
   for ; i < l; i++ {
-    chunk := core.GetChunk(i)
-    serverChunk(context, res, chunk, false)
+    select {
+    case <- cc:
+      return
+    default:
+      chunk := core.GetChunk(i)
+      serverChunk(context, res, chunk, false)
+    }
   }
 }
 
@@ -49,25 +55,43 @@ func serverChunk(context *core.Context, res http.ResponseWriter, chunk *core.Chu
     return 0
   }
   core.Stats.CacheMiss()
-  return demultiplexer.Demultiplex(context, chunk, toResponse(res, chunk, first), toDisk(context))
+  return demultiplexer.Demultiplex(context, chunk, toResponse(context, res, chunk, first), toDisk(context))
 }
 
-func toResponse(res http.ResponseWriter, chunk *core.Chunk, first bool) demultiplexer.Handler {
-  from := chunk.From
+func toResponse(context *core.Context, res http.ResponseWriter, chunk *core.Chunk, first bool) demultiplexer.Handler {
   sentHeaders := !first
+  to := context.Range.To
+  from := context.Range.From
+  offset := chunk.N * core.CHUNK_SIZE
+  var start int
+  if first { start = from }
   return func(payload *demultiplexer.Payload) {
+    if payload.Finished { return }
     if sentHeaders == false {
-      for k, v := range payload.Header {
-        res.Header()[k] = v
+      rh := res.Header()
+      for k, v := range payload.Header { rh[k] = v }
+
+      if to == 0 {
+        to = payload.TotalLength
+        context.Range.To = payload.TotalLength
+      }
+      rh.Set("Content-Length", strconv.Itoa(to - from))
+      rh.Set("Accept-Ranges", "bytes")
+      if context.Range.RangeRequest {
+        rh.Set("Content-Range", "bytes " + strconv.Itoa(from) + "-" + strconv.Itoa(to-1) + "/" + strconv.Itoa(payload.TotalLength))
+        res.WriteHeader(206)
+      } else {
+        res.WriteHeader(200)
       }
       sentHeaders = true
     }
-    to := len(payload.Data)
-    if to > from {
-      if to > chunk.To { to = chunk.To }
-      res.Write(payload.Data[from:to])
-      from = to
-    }
+    l := len(payload.Data)
+    end := l
+    if (offset + end) > to { end = to - offset }
+    if start >= end { return }
+    println(chunk.N, start, end)
+    res.Write(payload.Data[start:end])
+    start = l + 1
   }
 }
 

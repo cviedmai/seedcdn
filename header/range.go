@@ -7,13 +7,14 @@ import (
 type Range struct {
   From int
   To int
+  RangeRequest bool
 }
 
-var fullRange = []Range{*&Range{0, 0}}
+var fullRange = []*Range{&Range{0, 0, false}}
 
-func ParseRange(raw string) []Range {
+func ParseRange(raw string) []*Range {
   if len(raw) == 0 { return fullRange }
-  var ranges []Range
+  var ranges []*Range
   length := len(raw)
   start := 6 //bytes=
   split := 0
@@ -30,7 +31,7 @@ func ParseRange(raw string) []Range {
   return append(ranges, createRange(raw[start:], split - start))
 }
 
-func createRange(raw string, split int) Range {
+func createRange(raw string, split int) *Range {
   var from, to int
   var relative bool
   if split == 0 {
@@ -45,5 +46,5 @@ func createRange(raw string, split int) Range {
     to, _ = strconv.Atoi(raw[split+1:])
     if relative { to *= -1 }
   }
-  return Range{from, to}
+  return &Range{from, to, true}
 }

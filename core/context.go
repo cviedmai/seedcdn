@@ -5,6 +5,7 @@ import (
   "strconv"
   "net/http"
   "crypto/md5"
+  "seedcdn/header"
   "github.com/stathat/consistent"
 )
 
@@ -26,6 +27,7 @@ type Context struct {
   Chunks []*Chunk
   HeaderFile string
   Req *http.Request
+  Range *header.Range
 }
 
 func NewContext(req *http.Request) *Context {

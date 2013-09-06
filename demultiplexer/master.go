@@ -4,6 +4,8 @@ import (
   "io"
   "log"
   "sync"
+  "strings"
+  "strconv"
   "net/http"
   "seedcdn/core"
 )
@@ -16,9 +18,9 @@ const (
 type Payload struct {
   Header http.Header
   Status int
-  ContentLength int
   Data []byte
   Finished bool
+  TotalLength int
 }
 
 type Master struct {
@@ -28,7 +30,7 @@ type Master struct {
 }
 
 var (
-  proxyHeaders = []string{"Content-Length", "Content-Range", "Content-Type", "Cache-Control"}
+  proxyHeaders = []string{"Content-Type", "Cache-Control"}
   errorPayload = &Payload{Header: make(http.Header), Status: 500, Data: []byte{}, Finished: true,}
 )
 func (m *Master) Observed(observer chan *Payload) {
@@ -50,11 +52,18 @@ func (m *Master) Run(response *http.Response, err error, masterHandler Handler) 
     value := response.Header.Get(h)
     if len(value) > 0 { header.Set(h, value) }
   }
-  contentLength := int(response.ContentLength)
-  if contentLength < 1 {
-    m.finish(&Payload{header, status, 0, nil, true,}, nil)
+
+  if response.ContentLength < 1 {
+    m.finish(&Payload{header, status, nil, true, 0,}, nil)
     return
   }
+
+  r := response.Header.Get("Content-Range")
+  if len(r) == 0 {
+    m.finish(&Payload{header, 502, nil, true, 0,}, nil)
+    return
+  }
+  totalLength, _ := strconv.Atoi(r[strings.LastIndex(r, "/")+1:])
 
   data := make([]byte, response.ContentLength)
   read := 0
@@ -62,7 +71,7 @@ func (m *Master) Run(response *http.Response, err error, masterHandler Handler) 
     n, err := response.Body.Read(data[read:])
     if n > 0 {
       read += n
-      m.flush(&Payload{header, status, contentLength, data[0:read], false,})
+      m.flush(&Payload{header, status, data[0:read], false, totalLength,})
     }
     if err == io.EOF {
       break
@@ -71,7 +80,7 @@ func (m *Master) Run(response *http.Response, err error, masterHandler Handler) 
       return
     }
   }
-  final := &Payload{header, status, contentLength, data[0:read], true}
+  final := &Payload{header, status, data[0:read], true, totalLength,}
   //Flush the slaves (which releases them) before we do any IO
   m.flush(final)
   masterHandler(final)

@@ -21,7 +21,7 @@ var pool = &redis.Pool {
 }
 
 func Run (context *core.Context, res http.ResponseWriter, next core.Middleware) {
-  go run(context)
+  //go run(context)
   next(context, res)
 }
 

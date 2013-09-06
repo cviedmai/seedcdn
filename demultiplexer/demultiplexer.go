@@ -23,7 +23,7 @@ func Demultiplex(context *core.Context, chunk *core.Chunk, slaveHandler Handler,
   for {
     payload := <- c
     slaveHandler(payload)
-    if payload.Finished { return payload.ContentLength }
+    if payload.Finished { return payload.TotalLength }
   }
 }
 
